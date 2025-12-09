@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
+from models import db, User, People, Planets, Favorite
 #from models import Person
 
 app = Flask(__name__)
@@ -38,12 +38,22 @@ def sitemap():
 
 @app.route('/user', methods=['GET'])
 def handle_hello():
+    try:
+        query_results= User.query.all()
+        if not query_results:
+            return jsonify({"msg": "No hay usuarios encontrados"}), 400
+        
+        results= list(map(lambda item: item.serialize(), query_results))
+        response_body = {
+            "msg": "Los usuarios fueron extraidos",
+            "results" : results
+        }
 
-    response_body = {
-        "msg": "Hello, this is your GET /user response "
-    }
+        return jsonify(response_body), 200
 
-    return jsonify(response_body), 200
+    except Exception as e:
+        print(f"Error al obtener usuarios:{e}")
+        return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
