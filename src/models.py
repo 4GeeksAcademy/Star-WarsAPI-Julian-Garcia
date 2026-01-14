@@ -1,32 +1,37 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Boolean, ForeignKey
+from sqlalchemy import String, Boolean, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import List
+from typing import List, Optional
 
 db = SQLAlchemy()
 
+
 class User(db.Model):
+    __tablename__ = "user"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False)
-    Favorite: Mapped[List["Favorite"]] = relationship(back_populates="User")
 
+    favorites: Mapped[List["Favorite"]] = relationship(back_populates="user")
 
     def serialize(self):
         return {
             "id": self.id,
-            "email": self.email,
-            # do not serialize the password, its a security breach
+            "email": self.email
         }
 
-class Planets(db.Model):
+
+class Planet(db.Model):
+    __tablename__ = "planet"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    population: Mapped[str] = mapped_column(String(120), nullable=False)
+    population: Mapped[int] = mapped_column(Integer, nullable=False)
     climate: Mapped[str] = mapped_column(String(120), nullable=False)
-    Favorite: Mapped[List["Favorite"]] = relationship(back_populates="Planets")
 
+    favorites: Mapped[List["Favorite"]] = relationship(back_populates="planet")
 
     def serialize(self):
         return {
@@ -34,39 +39,40 @@ class Planets(db.Model):
             "name": self.name,
             "population": self.population,
             "climate": self.climate
-
         }
-    
+
 
 class People(db.Model):
+    __tablename__ = "people"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    BirthYear: Mapped[int] = mapped_column(String(120), nullable=False)
-    Height: Mapped[str] = mapped_column(String(120), nullable=False)
-    EyeColor: Mapped[str] = mapped_column(String(120), nullable=False)
-    Gender: Mapped[str] = mapped_column(String(120), nullable=False)
-    Favorite: Mapped[List["Favorite"]] = relationship(back_populates="People")
+    birth_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    eye_color: Mapped[str] = mapped_column(String(50), nullable=False)
+    gender: Mapped[str] = mapped_column(String(20), nullable=False)
 
+    favorites: Mapped[List["Favorite"]] = relationship(back_populates="people")
 
     def serialize(self):
         return {
-
-
             "id": self.id,
             "name": self.name,
-            "BirthYear": self.BirthYear,
-            "Height": self.Height,
-            "EyeColor": self.EyeColor,
-            "Gender": self.Gender,
-            
-
+            "birth_year": self.birth_year,
+            "height": self.height,
+            "eye_color": self.eye_color,
+            "gender": self.gender
         }
-    
+
+
 class Favorite(db.Model):
+    __tablename__ = "favorite"
+
     id: Mapped[int] = mapped_column(primary_key=True)
-    id_user: Mapped[int] = mapped_column(ForeignKey("user.id"), primary_key=True)
-    id_people: Mapped[int] = mapped_column(ForeignKey("people.id"), primary_key=True)
-    id_planets: Mapped[int] = mapped_column(ForeignKey("planets.id"), primary_key=True)
-    User: Mapped["User"] = relationship(back_populates="Favorite")
-    People: Mapped["People"] = relationship(back_populates="Favorite")
-    Planets: Mapped["Planets"] = relationship(back_populates="Favorite")
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
+    people_id: Mapped[Optional[int]] = mapped_column(ForeignKey("people.id"))
+    planet_id: Mapped[Optional[int]] = mapped_column(ForeignKey("planet.id"))
+
+    user: Mapped["User"] = relationship(back_populates="favorites")
+    people: Mapped[Optional["People"]] = relationship(back_populates="favorites")
+    planet: Mapped[Optional["Planet"]] = relationship(back_populates="favorites")
