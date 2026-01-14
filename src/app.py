@@ -35,268 +35,169 @@ def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
 # generate sitemap with all your endpoints
-
+CURRENT_USER_ID = 1
 
 @app.route('/')
 def sitemap():
     return generate_sitemap(app)
 
 
-@app.route('/user', methods=['GET'])
-def handle_hello():
-    try:
-        query_results = User.query.all()
-        if not query_results:
-            return jsonify({"msg": "No hay usuarios encontrados"}), 400
-
-        results = list(map(lambda item: item.serialize(), query_results))
-        response_body = {
-            "msg": "Los usuarios fueron extraidos",
-            "results": results
-        }
-
-        return jsonify(response_body), 200
-
-    except Exception as e:
-        print(f"Error al obtener usuarios:{e}")
-        return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
+@app.route("/users", methods=["GET"])
+def get_users():
+    users = User.query.all()
+    return jsonify([u.serialize() for u in users]), 200
 
 
-@app.route('/people', methods=['GET'])
+# ======================
+# PEOPLE
+# ======================
+
+@app.route("/people", methods=["GET"])
 def get_people():
-    try:
-        query_results = People.query.all()
-        if not query_results:
-            return jsonify({"msg": "No hay personajes encontrados"}), 400
-
-        results = list(map(lambda item: item.serialize(), query_results))
-        response_body = {
-            "msg": "Los personajes fueron extraidos",
-            "results": results
-        }
-
-        return jsonify(response_body), 200
-
-    except Exception as e:
-        print(f"Error al obtener personajes:{e}")
-        return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
-
-# Get People by id
+    people = People.query.all()
+    return jsonify([p.serialize() for p in people]), 200
 
 
-@app.route('/people/<int:people_id>', methods=['GET'])
-def get_people_byid(people_id):
-    try:
-        query_results = People.query.filter_by(id=people_id).first()
-        if not query_results:
-            return jsonify({"msg": "Personaje no existe"}), 400
-
-        response_body = {
-            "msg": "Usuario encontrado",
-            "results": query_results.serialize()
-        }
-
-        return jsonify(response_body), 200
-
-    except Exception as e:
-        print(f"Error al obtener personajes:{e}")
-        return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
-
-# Get Planets
+@app.route("/people/<int:people_id>", methods=["GET"])
+def get_people_by_id(people_id):
+    person = People.query.get(people_id)
+    if not person:
+        return jsonify({"msg": "Personaje no existe"}), 404
+    return jsonify(person.serialize()), 200
 
 
-@app.route('/planets', methods=['GET'])
+# ======================
+# PLANETS
+# ======================
+
+@app.route("/planets", methods=["GET"])
 def get_planets():
-    try:
-        query_results = Planets.query.all()
-        if not query_results:
-            return jsonify({"msg": "No hay planetas encontrados"}), 400
-
-        results = list(map(lambda item: item.serialize(), query_results))
-        response_body = {
-            "msg": "Los planetas fueron extraidos",
-            "results": results
-        }
-
-        return jsonify(response_body), 200
-
-    except Exception as e:
-        print(f"Error al obtener los planetas:{e}")
-        return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
-
-# Get Planets by ID
+    planets = Planets.query.all()
+    return jsonify([p.serialize() for p in planets]), 200
 
 
-@app.route('/planets/<int:planet_id>', methods=['GET'])
-def get_planet_byid(planet_id):
-    try:
-        query_results = Planets.query.filter_by(id=planet_id).first()
-        if not query_results:
-            return jsonify({"msg": "Planeta no existe"}), 400
+@app.route("/planets/<int:planet_id>", methods=["GET"])
+def get_planet_by_id(planet_id):
+    planet = Planets.query.get(planet_id)
+    if not planet:
+        return jsonify({"msg": "Planeta no existe"}), 404
+    return jsonify(planet.serialize()), 200
 
-        response_body = {
-            "msg": "Planeta encontrado",
-            "results": query_results.serialize()
-        }
 
-        return jsonify(response_body), 200
+# ======================
+# FAVORITES
+# ======================
 
-    except Exception as e:
-        print(f"Error al obtener planetas:{e}")
-        return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
+@app.route("/users/favorites", methods=["GET"])
+def get_user_favorites():
+    favorites = Favorite.query.filter_by(id_user=CURRENT_USER_ID).all()
 
-# Crear usuario
-
-@app.route('/user', methods=['POST'])
-def create_user():
-
-    try:
-    # revisa la data
-        data= request.get_json()
-    #si no hay data
-        if not data:
-            return jsonify({"msg": "no se proporcionaron datos"}), 400
-    #la informacion que se va a postear  
-        email=data.get("email")
-        password=data.get("password")
-        is_active=data.get("is_active", False)
-
-    #si el correo es repetido
-        existing_user= User.query.filter_by(email=email).first()
-        if existing_user:
-            return jsonify({"msg": "Usuario ya registrado"}), 409
-
-    #crear nuevo usuario
-        new_user=User(
-            email=email,
-            password=password,
-            is_active=is_active
-        )
-    #mandarlo a la tabla de modelado
-        db.session.add(new_user)
-        db.session.commit()
-
-        return jsonify(new_user.serialize()), 201
-
-    except Exception as e:
-            print(f"Error al obtener usuarios:{e}")
-            return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
-    
-# Favorites
-
-@app.route('/users/<int:user_id>/favorites', methods=['GET'])
-def get_user_favorites(user_id):
-    try:
-        # Get favorites for this specific user
-        favorites = Favorite.query.filter_by(id_user=user_id).all()
-
-        if not favorites:
-            return jsonify({"msg": "El usuario no tiene favoritos"}), 404
-
-        results = []
-        for fav in favorites:
+    results = []
+    for fav in favorites:
+        if fav.People:
             results.append({
-                "id": fav.id,
-                "id_user": fav.id_user,
-                "id_people": fav.id_people,
-                "id_planets": fav.id_planets
+                "type": "people",
+                "data": fav.People.serialize()
+            })
+        if fav.Planets:
+            results.append({
+                "type": "planet",
+                "data": fav.Planets.serialize()
             })
 
-        return jsonify({
-            "msg": "Favoritos obtenidos correctamente",
-            "results": results
-        }), 200
+    return jsonify(results), 200
 
-    except Exception as e:
-        print(f"Error al obtener favoritos: {e}")
-        return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
 
-#favorite planet
+# ----- ADD FAVORITE PLANET -----
 
-@app.route('/users/<int:user_id>/favorite/planet/<int:planet_id>', methods=['POST'])
-def add_favorite_planet(user_id, planet_id):
-    try:
-        # Verify planet exists
-        planet = Planets.query.get(planet_id)
-        if not planet:
-            return jsonify({"msg": "El planeta no existe"}), 404
+@app.route("/favorite/planet/<int:planet_id>", methods=["POST"])
+def add_favorite_planet(planet_id):
+    planet = Planets.query.get(planet_id)
+    if not planet:
+        return jsonify({"msg": "El planeta no existe"}), 404
 
-        # Check if already favorited
-        existing_favorite = Favorite.query.filter_by(
-            id_user=user_id,
-            id_planets=planet_id
-        ).first()
+    exists = Favorite.query.filter_by(
+        id_user=CURRENT_USER_ID,
+        id_planets=planet_id
+    ).first()
 
-        if existing_favorite:
-            return jsonify({"msg": "El planeta ya está en favoritos"}), 409
+    if exists:
+        return jsonify({"msg": "El planeta ya está en favoritos"}), 409
 
-        # Create new favorite
-        new_favorite = Favorite(
-            id_user=user_id,
-            id_planets=planet_id,
-            id_people=None
-        )
+    fav = Favorite(
+        id_user=CURRENT_USER_ID,
+        id_planets=planet_id,
+        id_people=None
+    )
 
-        db.session.add(new_favorite)
-        db.session.commit()
+    db.session.add(fav)
+    db.session.commit()
 
-        return jsonify({
-            "msg": "Planeta agregado a favoritos",
-            "favorite": {
-                "id": new_favorite.id,
-                "id_user": new_favorite.id_user,
-                "id_planets": new_favorite.id_planets,
-                "id_people": new_favorite.id_people
-            }
-        }), 201
+    return jsonify({"msg": "Planeta agregado a favoritos"}), 200
 
-    except Exception as e:
-        print(f"Error al agregar favorito: {e}")
-        return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
-    
-#favorite people
 
-@app.route('/users/<int:user_id>/favorite/people/<int:people_id>', methods=['POST'])
-def add_favorite_people(user_id, people_id):
-    try:
-        # Verify character exists
-        person = People.query.get(people_id)
-        if not person:
-            return jsonify({"msg": "El personaje no existe"}), 404
+# ----- ADD FAVORITE PEOPLE -----
 
-        # Check if already favorited
-        existing_favorite = Favorite.query.filter_by(
-            id_user=user_id,
-            id_people=people_id
-        ).first()
+@app.route("/favorite/people/<int:people_id>", methods=["POST"])
+def add_favorite_people(people_id):
+    person = People.query.get(people_id)
+    if not person:
+        return jsonify({"msg": "El personaje no existe"}), 404
 
-        if existing_favorite:
-            return jsonify({"msg": "El personaje ya está en favoritos"}), 409
+    exists = Favorite.query.filter_by(
+        id_user=CURRENT_USER_ID,
+        id_people=people_id
+    ).first()
 
-        # Create new favorite
-        new_favorite = Favorite(
-            id_user=user_id,
-            id_people=people_id,
-            id_planets=None
-        )
+    if exists:
+        return jsonify({"msg": "El personaje ya está en favoritos"}), 409
 
-        db.session.add(new_favorite)
-        db.session.commit()
+    fav = Favorite(
+        id_user=CURRENT_USER_ID,
+        id_people=people_id,
+        id_planets=None
+    )
 
-        return jsonify({
-            "msg": "Personaje agregado a favoritos",
-            "favorite": {
-                "id": new_favorite.id,
-                "id_user": new_favorite.id_user,
-                "id_people": new_favorite.id_people,
-                "id_planets": new_favorite.id_planets
-            }
-        }), 201
+    db.session.add(fav)
+    db.session.commit()
 
-    except Exception as e:
-        print(f"Error al agregar favorito: {e}")
-        return jsonify({"msg": "Internal Server Error", "error": str(e)}), 500
+    return jsonify({"msg": "Personaje agregado a favoritos"}), 200
 
+
+# ----- DELETE FAVORITE PLANET -----
+
+@app.route("/favorite/planet/<int:planet_id>", methods=["DELETE"])
+def delete_favorite_planet(planet_id):
+    fav = Favorite.query.filter_by(
+        id_user=CURRENT_USER_ID,
+        id_planets=planet_id
+    ).first()
+
+    if not fav:
+        return jsonify({"msg": "Favorito no existe"}), 404
+
+    db.session.delete(fav)
+    db.session.commit()
+
+    return jsonify({"msg": "Planeta eliminado de favoritos"}), 200
+
+
+# ----- DELETE FAVORITE PEOPLE -----
+
+@app.route("/favorite/people/<int:people_id>", methods=["DELETE"])
+def delete_favorite_people(people_id):
+    fav = Favorite.query.filter_by(
+        id_user=CURRENT_USER_ID,
+        id_people=people_id
+    ).first()
+
+    if not fav:
+        return jsonify({"msg": "Favorito no existe"}), 404
+
+    db.session.delete(fav)
+    db.session.commit()
+
+    return jsonify({"msg": "Personaje eliminado de favoritos"}), 200
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
