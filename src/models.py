@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Boolean, ForeignKey, Integer
+from sqlalchemy import String, Boolean, ForeignKey, Integer, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List, Optional
 
@@ -28,7 +28,7 @@ class Planet(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    population: Mapped[int] = mapped_column(Integer, nullable=False)
+    population: Mapped[int] = mapped_column(BigInteger, nullable=False)
     climate: Mapped[str] = mapped_column(String(120), nullable=False)
 
     favorites: Mapped[List["Favorite"]] = relationship(back_populates="planet")
